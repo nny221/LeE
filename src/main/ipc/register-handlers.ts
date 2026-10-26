@@ -1,10 +1,15 @@
-import { ipcMain } from 'electron'
+import { BrowserWindow, ipcMain } from 'electron'
 import type {
+  ImportRequest,
+  ModelConfigInput,
   ReviewGrade,
   WordInput,
   WindowTarget
 } from '../../shared/contracts'
 import { IPC_CHANNELS } from '../../shared/contracts'
+import { ImportImageStore } from '../import/image-store'
+import { ModelSettingsStore } from '../import/model-settings'
+import { ImportService } from '../services/import-service'
 import { ReviewService } from '../services/review-service'
 import { WordService } from '../services/word-service'
 import { WindowManager } from '../windows/window-manager'
@@ -12,12 +17,18 @@ import { WindowManager } from '../windows/window-manager'
 interface IpcDependencies {
   wordService: WordService
   reviewService: ReviewService
+  importService: ImportService
+  modelSettings: ModelSettingsStore
+  imageStore: ImportImageStore
   windowManager: WindowManager
 }
 
 export function registerIpcHandlers({
   wordService,
   reviewService,
+  importService,
+  modelSettings,
+  imageStore,
   windowManager
 }: IpcDependencies): void {
   const publishStats = (): void => {
@@ -50,6 +61,34 @@ export function registerIpcHandlers({
     }
   )
 
+  ipcMain.handle(IPC_CHANNELS.modelConfigGet, () => modelSettings.getView())
+
+  ipcMain.handle(
+    IPC_CHANNELS.modelConfigSave,
+    (_event, input: ModelConfigInput) => modelSettings.save(input)
+  )
+
+  ipcMain.handle(IPC_CHANNELS.importChooseImage, (event) =>
+    imageStore.chooseFile(BrowserWindow.fromWebContents(event.sender))
+  )
+
+  ipcMain.handle(IPC_CHANNELS.importClipboardImage, () =>
+    imageStore.readClipboard()
+  )
+
+  ipcMain.handle(
+    IPC_CHANNELS.importDiscardImage,
+    (_event, imageId: string) => {
+      imageStore.discard(imageId)
+    }
+  )
+
+  ipcMain.handle(IPC_CHANNELS.importRun, async (_event, input: ImportRequest) => {
+    const result = await importService.run(input)
+    publishStats()
+    return result
+  })
+
   ipcMain.handle(
     IPC_CHANNELS.windowOpen,
     async (_event, target: WindowTarget) => {
@@ -57,6 +96,8 @@ export function registerIpcHandlers({
         await windowManager.openReview()
       } else if (target === 'editor') {
         await windowManager.openEditor()
+      } else if (target === 'import') {
+        await windowManager.openImport()
       }
     }
   )

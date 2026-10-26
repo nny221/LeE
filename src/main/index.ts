@@ -3,7 +3,11 @@ import type { Tray } from 'electron'
 import type { DatabaseSync } from 'node:sqlite'
 import { openDatabase } from './db/database'
 import { WordRepository } from './db/word-repository'
+import { ImportImageStore } from './import/image-store'
+import { ModelClient } from './import/model-client'
+import { ModelSettingsStore } from './import/model-settings'
 import { registerIpcHandlers } from './ipc/register-handlers'
+import { ImportService } from './services/import-service'
 import { ReviewService } from './services/review-service'
 import { WordService } from './services/word-service'
 import { createApplicationTray } from './tray'
@@ -31,9 +35,24 @@ if (!hasSingleInstanceLock) {
     const repository = new WordRepository(database)
     const wordService = new WordService(repository)
     const reviewService = new ReviewService(repository)
+    const modelSettings = new ModelSettingsStore()
+    const imageStore = new ImportImageStore()
+    const modelClient = new ModelClient(modelSettings)
+    const importService = new ImportService(
+      repository,
+      modelClient,
+      imageStore
+    )
 
     windowManager = new WindowManager()
-    registerIpcHandlers({ wordService, reviewService, windowManager })
+    registerIpcHandlers({
+      wordService,
+      reviewService,
+      importService,
+      modelSettings,
+      imageStore,
+      windowManager
+    })
     windowManager.createPetWindow()
     tray = createApplicationTray(windowManager)
 

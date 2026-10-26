@@ -3,20 +3,28 @@ import type {
   AppStats,
   Familiarity,
   ReviewGrade,
+  TermType,
   WordInput,
   WordRecord
 } from '../../shared/contracts'
+import { normalizeTerm } from '../domain/normalization'
 import type { ReviewScheduleState, ScheduledReview } from '../domain/scheduler'
-import { withTransaction } from './database'
+import { withTransaction } from './transaction'
 
 interface WordRow {
   id: number
   term: string
   normalized_term: string
+  term_type: TermType
   phonetic: string
+  part_of_speech: string
   meaning: string
   example: string
+  example_translation: string
   note: string
+  source_excerpt: string
+  import_batch_id: string | null
+  enrichment_status: 'complete' | 'pending'
   familiarity: Familiarity
   review_count: number
   lapse_count: number
@@ -40,10 +48,16 @@ const WORD_SELECT = `
     w.id,
     w.term,
     w.normalized_term,
+    w.term_type,
     w.phonetic,
+    w.part_of_speech,
     w.meaning,
     w.example,
+    w.example_translation,
     w.note,
+    w.source_excerpt,
+    w.import_batch_id,
+    w.enrichment_status,
     s.familiarity,
     s.review_count,
     s.lapse_count,
@@ -55,19 +69,21 @@ const WORD_SELECT = `
   JOIN review_states s ON s.word_id = w.id
 `
 
-function normalizeTerm(term: string): string {
-  return term.trim().replace(/\s+/g, ' ').toLocaleLowerCase('en-US')
-}
-
 function toWordRecord(row: WordRow): WordRecord {
   return {
     id: row.id,
     term: row.term,
     normalizedTerm: row.normalized_term,
+    termType: row.term_type,
     phonetic: row.phonetic,
+    partOfSpeech: row.part_of_speech,
     meaning: row.meaning,
     example: row.example,
+    exampleTranslation: row.example_translation,
     note: row.note,
+    sourceExcerpt: row.source_excerpt,
+    importBatchId: row.import_batch_id,
+    enrichmentStatus: row.enrichment_status,
     familiarity: row.familiarity,
     reviewCount: row.review_count,
     lapseCount: row.lapse_count,
@@ -111,42 +127,83 @@ export class WordRepository {
   }
 
   createWord(input: WordInput, now: number): WordRecord {
+    return withTransaction(this.db, () => this.insertWord(input, now))
+  }
+
+  createMany(
+    inputs: WordInput[],
+    batchId: string,
+    now: number
+  ): WordRecord[] {
+    return withTransaction(this.db, () =>
+      inputs.map((input) => this.insertWord(input, now, batchId))
+    )
+  }
+
+  findExistingNormalizedTerms(normalizedTerms: string[]): Set<string> {
+    if (normalizedTerms.length === 0) {
+      return new Set()
+    }
+
+    const placeholders = normalizedTerms.map(() => '?').join(', ')
+    const rows = this.db
+      .prepare(
+        `SELECT normalized_term
+         FROM words
+         WHERE normalized_term IN (${placeholders})`
+      )
+      .all(...normalizedTerms) as Array<{ normalized_term: string }>
+
+    return new Set(rows.map((row) => row.normalized_term))
+  }
+
+  private insertWord(
+    input: WordInput,
+    now: number,
+    importBatchId: string | null = null
+  ): WordRecord {
     const term = input.term.trim()
     const normalizedTerm = normalizeTerm(term)
 
-    return withTransaction(this.db, () => {
-      const result = this.db
-        .prepare(
-          `INSERT INTO words
-            (term, normalized_term, phonetic, meaning, example, note, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-        )
-        .run(
-          term,
-          normalizedTerm,
-          input.phonetic.trim(),
-          input.meaning.trim(),
-          input.example.trim(),
-          input.note.trim(),
-          now,
-          now
-        )
+    const result = this.db
+      .prepare(
+        `INSERT INTO words
+          (term, normalized_term, term_type, phonetic, part_of_speech, meaning,
+           example, example_translation, note, source_excerpt, import_batch_id,
+           enrichment_status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        term,
+        normalizedTerm,
+        input.termType,
+        input.phonetic.trim(),
+        input.partOfSpeech.trim(),
+        input.meaning.trim(),
+        input.example.trim(),
+        input.exampleTranslation.trim(),
+        input.note.trim(),
+        input.sourceExcerpt.trim(),
+        importBatchId,
+        input.meaning.trim() ? 'complete' : 'pending',
+        now,
+        now
+      )
 
-      const wordId = Number(result.lastInsertRowid)
-      this.db
-        .prepare(
-          `INSERT INTO review_states
-            (word_id, familiarity, interval_days, ease, review_count, lapse_count, next_due_at)
-           VALUES (?, 'new', 0, 2.5, 0, 0, ?)`
-        )
-        .run(wordId, now)
+    const wordId = Number(result.lastInsertRowid)
+    this.db
+      .prepare(
+        `INSERT INTO review_states
+          (word_id, familiarity, interval_days, ease, review_count, lapse_count, next_due_at)
+         VALUES (?, 'new', 0, 2.5, 0, 0, ?)`
+      )
+      .run(wordId, now)
 
-      const word = this.getWordById(wordId)
-      if (!word) {
-        throw new Error('Failed to create word.')
-      }
-      return word
-    })
+    const word = this.getWordById(wordId)
+    if (!word) {
+      throw new Error('Failed to create word.')
+    }
+    return word
   }
 
   deleteWord(wordId: number): void {

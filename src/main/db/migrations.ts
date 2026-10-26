@@ -6,10 +6,16 @@ export function runMigrations(db: DatabaseSync): void {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       term TEXT NOT NULL,
       normalized_term TEXT NOT NULL UNIQUE,
+      term_type TEXT NOT NULL DEFAULT 'word',
       phonetic TEXT NOT NULL DEFAULT '',
+      part_of_speech TEXT NOT NULL DEFAULT '',
       meaning TEXT NOT NULL,
       example TEXT NOT NULL DEFAULT '',
+      example_translation TEXT NOT NULL DEFAULT '',
       note TEXT NOT NULL DEFAULT '',
+      source_excerpt TEXT NOT NULL DEFAULT '',
+      import_batch_id TEXT,
+      enrichment_status TEXT NOT NULL DEFAULT 'complete',
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL
     );
@@ -43,4 +49,56 @@ export function runMigrations(db: DatabaseSync): void {
     CREATE INDEX IF NOT EXISTS idx_review_events_word
       ON review_events(word_id, reviewed_at);
   `)
+
+  addColumnIfMissing(
+    db,
+    'words',
+    'term_type',
+    "TEXT NOT NULL DEFAULT 'word'"
+  )
+  addColumnIfMissing(
+    db,
+    'words',
+    'part_of_speech',
+    "TEXT NOT NULL DEFAULT ''"
+  )
+  addColumnIfMissing(
+    db,
+    'words',
+    'example_translation',
+    "TEXT NOT NULL DEFAULT ''"
+  )
+  addColumnIfMissing(
+    db,
+    'words',
+    'source_excerpt',
+    "TEXT NOT NULL DEFAULT ''"
+  )
+  addColumnIfMissing(db, 'words', 'import_batch_id', 'TEXT')
+  addColumnIfMissing(
+    db,
+    'words',
+    'enrichment_status',
+    "TEXT NOT NULL DEFAULT 'complete'"
+  )
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_words_import_batch
+      ON words(import_batch_id);
+  `)
+}
+
+function addColumnIfMissing(
+  db: DatabaseSync,
+  table: string,
+  column: string,
+  definition: string
+): void {
+  const columns = db
+    .prepare(`PRAGMA table_info(${table})`)
+    .all() as Array<{ name: string }>
+
+  if (!columns.some((item) => item.name === column)) {
+    db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`)
+  }
 }

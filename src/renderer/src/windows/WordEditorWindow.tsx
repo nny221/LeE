@@ -4,10 +4,14 @@ import { errorMessage, familiarityLabels, formatDueAt } from '../lib/format'
 
 const EMPTY_FORM: WordInput = {
   term: '',
+  termType: 'word',
   phonetic: '',
+  partOfSpeech: '',
   meaning: '',
   example: '',
-  note: ''
+  exampleTranslation: '',
+  note: '',
+  sourceExcerpt: ''
 }
 
 export function EditorWindow(): React.JSX.Element {
@@ -75,14 +79,23 @@ export function EditorWindow(): React.JSX.Element {
           <span className="eyebrow">VOCABULARY</span>
           <h1>我的词库</h1>
         </div>
-        <button
-          className="icon-button no-drag"
-          type="button"
-          aria-label="关闭词库窗口"
-          onClick={() => void window.lee.closeCurrentWindow()}
-        >
-          ×
-        </button>
+        <div className="titlebar-actions no-drag">
+          <button
+            className="header-action"
+            type="button"
+            onClick={() => void window.lee.openWindow('import')}
+          >
+            从截图或文字导入
+          </button>
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="关闭词库窗口"
+            onClick={() => void window.lee.closeCurrentWindow()}
+          >
+            ×
+          </button>
+        </div>
       </header>
 
       <div className="editor-layout">
@@ -107,11 +120,35 @@ export function EditorWindow(): React.JSX.Element {
           </label>
 
           <label>
+            类型
+            <select
+              value={form.termType}
+              onChange={(event) =>
+                updateField('termType', event.target.value)
+              }
+            >
+              <option value="word">单词</option>
+              <option value="phrase">词组</option>
+            </select>
+          </label>
+
+          <label>
             音标
             <input
               value={form.phonetic}
               placeholder="例如：/rɪˈzɪliənt/"
               onChange={(event) => updateField('phonetic', event.target.value)}
+            />
+          </label>
+
+          <label>
+            词性
+            <input
+              value={form.partOfSpeech}
+              placeholder="例如：adjective"
+              onChange={(event) =>
+                updateField('partOfSpeech', event.target.value)
+              }
             />
           </label>
 
@@ -127,7 +164,7 @@ export function EditorWindow(): React.JSX.Element {
           </label>
 
           <label>
-            例句
+            原文语境句
             <textarea
               rows={2}
               value={form.example}
@@ -137,10 +174,22 @@ export function EditorWindow(): React.JSX.Element {
           </label>
 
           <label>
-            个人笔记
+            语境句翻译
+            <textarea
+              rows={2}
+              value={form.exampleTranslation}
+              placeholder="孩子们可能非常有韧性。"
+              onChange={(event) =>
+                updateField('exampleTranslation', event.target.value)
+              }
+            />
+          </label>
+
+          <label>
+            补充笔记
             <input
               value={form.note}
-              placeholder="联想、词根或使用场景"
+              placeholder="英文解释、联想或使用场景"
               onChange={(event) => updateField('note', event.target.value)}
             />
           </label>
@@ -173,12 +222,23 @@ export function EditorWindow(): React.JSX.Element {
                 <div className="word-main">
                   <div className="word-term-line">
                     <h3>{word.term}</h3>
+                    {word.termType === 'phrase' ? (
+                      <span className="type-pill">词组</span>
+                    ) : null}
                     <span className={`status-pill status-${word.familiarity}`}>
                       {familiarityLabels[word.familiarity]}
                     </span>
                   </div>
                   {word.phonetic ? <span className="word-phonetic">{word.phonetic}</span> : null}
                   <p>{word.meaning}</p>
+                  {word.example ? (
+                    <blockquote className="word-context">
+                      {word.example}
+                      {word.exampleTranslation ? (
+                        <span>{word.exampleTranslation}</span>
+                      ) : null}
+                    </blockquote>
+                  ) : null}
                   <small>
                     {formatDueAt(word.nextDueAt)} · 已复习 {word.reviewCount} 次
                   </small>

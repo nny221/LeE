@@ -9,11 +9,14 @@ const REVIEW_WIDTH = 438
 const REVIEW_HEIGHT = 620
 const EDITOR_WIDTH = 560
 const EDITOR_HEIGHT = 690
+const IMPORT_WIDTH = 760
+const IMPORT_HEIGHT = 720
 
 export class WindowManager {
   private petWindow: BrowserWindow | null = null
   private reviewWindow: BrowserWindow | null = null
   private editorWindow: BrowserWindow | null = null
+  private importWindow: BrowserWindow | null = null
 
   createPetWindow(): void {
     if (this.petWindow && !this.petWindow.isDestroyed()) {
@@ -54,6 +57,13 @@ export class WindowManager {
   async openEditor(): Promise<void> {
     const window = this.ensureWindow('editor')
     this.positionNearPet(window, EDITOR_WIDTH, EDITOR_HEIGHT)
+    window.show()
+    window.focus()
+  }
+
+  async openImport(): Promise<void> {
+    const window = this.ensureWindow('import')
+    this.positionNearPet(window, IMPORT_WIDTH, IMPORT_HEIGHT)
     window.show()
     window.focus()
   }
@@ -107,7 +117,10 @@ export class WindowManager {
       return this.reviewWindow
     }
 
-    if (!this.editorWindow || this.editorWindow.isDestroyed()) {
+    if (
+      target === 'editor' &&
+      (!this.editorWindow || this.editorWindow.isDestroyed())
+    ) {
       this.editorWindow = this.createWindow({
         view: 'editor',
         width: EDITOR_WIDTH,
@@ -127,7 +140,34 @@ export class WindowManager {
       })
     }
 
-    return this.editorWindow
+    if (target === 'editor' && this.editorWindow) {
+      return this.editorWindow
+    }
+
+    if (!this.importWindow || this.importWindow.isDestroyed()) {
+      this.importWindow = this.createWindow({
+        view: 'import',
+        width: IMPORT_WIDTH,
+        height: IMPORT_HEIGHT,
+        transparent: false,
+        frame: false,
+        resizable: true,
+        minWidth: 640,
+        minHeight: 620,
+        skipTaskbar: false,
+        alwaysOnTop: false,
+        hasShadow: true,
+        focusable: true
+      })
+      this.importWindow.on('closed', () => {
+        this.importWindow = null
+      })
+    }
+
+    if (!this.importWindow) {
+      throw new Error('Failed to create import window.')
+    }
+    return this.importWindow
   }
 
   private createWindow(options: {

@@ -114,6 +114,9 @@ export function ReviewWindow(): React.JSX.Element {
               <span className={`status-pill status-${card.familiarity}`}>
                 {card.familiarity === 'new' ? '第一次见面' : '再次出现'}
               </span>
+              {card.termType === 'phrase' ? (
+                <span className="type-pill phrase-heading">词组</span>
+              ) : null}
               <h2>{card.term}</h2>
               {card.phonetic ? <p className="phonetic">{card.phonetic}</p> : null}
               {!revealed ? (
@@ -133,10 +136,16 @@ export function ReviewWindow(): React.JSX.Element {
               <section className="answer-panel">
                 <span className="eyebrow">MEANING</span>
                 <p className="meaning">{card.meaning}</p>
+                {card.partOfSpeech ? (
+                  <span className="part-of-speech">{card.partOfSpeech}</span>
+                ) : null}
                 {card.example ? (
                   <blockquote>
-                    <span>EXAMPLE</span>
+                    <span>CONTEXT</span>
                     {card.example}
+                    {card.exampleTranslation ? (
+                      <small>{card.exampleTranslation}</small>
+                    ) : null}
                   </blockquote>
                 ) : null}
                 {card.note ? <p className="word-note">{card.note}</p> : null}

@@ -2,6 +2,7 @@
   "name": "lee-english-pet",
   "version": "0.1.0",
   "description": "A lightweight desktop pet for reviewing English vocabulary.",
+  "author": "LeE",
   "main": "./out/main/index.js",
   "private": true,
   "license": "UNLICENSED",
@@ -16,7 +17,11 @@
   },
   "dependencies": {
     "react": "^19.3.1",
-    "react-dom": "^19.3.1"
+    "react-dom": "^19.3.1",
+    "subtlex-word-frequencies": "^2.0.0",
+    "wink-eng-lite-web-model": "^1.8.1",
+    "wink-nlp": "^2.4.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

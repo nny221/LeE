@@ -55,6 +55,12 @@ export function createApplicationTray(windowManager: WindowManager): Tray {
           void windowManager.openEditor()
         }
       },
+      {
+        label: '从文字或截图导入',
+        click: () => {
+          void windowManager.openImport()
+        }
+      },
       { type: 'separator' },
       {
         label: '显示桌宠',
