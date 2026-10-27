@@ -31,6 +31,11 @@ export function ImportWindow(): React.JSX.Element {
 
   useEffect(() => {
     void loadConfig()
+    const stopListening = window.lee.onImportImagePending(() => {
+      void takePendingImportImage()
+    })
+    void takePendingImportImage()
+    return stopListening
   }, [])
 
   const loadConfig = async (): Promise<void> => {
@@ -88,13 +93,27 @@ export function ImportWindow(): React.JSX.Element {
     }
   }
 
+  const takePendingImportImage = async (): Promise<void> => {
+    setError('')
+    try {
+      const attachment = await window.lee.takePendingImportImage()
+      if (attachment) {
+        await replaceImage(attachment)
+      }
+    } catch (imageError) {
+      setError(errorMessage(imageError))
+    }
+  }
+
   const replaceImage = async (
     attachment: ImportImageAttachment
   ): Promise<void> => {
-    if (image) {
-      await window.lee.discardImportImage(image.imageId)
-    }
-    setImage(attachment)
+    setImage((current) => {
+      if (current && current.imageId !== attachment.imageId) {
+        void window.lee.discardImportImage(current.imageId)
+      }
+      return attachment
+    })
     setResult(null)
   }
 
@@ -267,7 +286,7 @@ export function ImportWindow(): React.JSX.Element {
           </div>
 
           <p className="source-tip">
-            先用系统截图工具复制图片，再点“读取截图”；或者直接粘贴英文片段。
+            按 Ctrl+Alt+L 截图后会自动显示在这里；也可以读取剪贴板或粘贴英文片段。
           </p>
 
           <textarea

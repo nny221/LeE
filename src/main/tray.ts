@@ -1,4 +1,5 @@
 import { Menu, nativeImage, Tray } from 'electron'
+import { SCREENSHOT_SHORTCUT } from './screenshot'
 import type { WindowManager } from './windows/window-manager'
 
 function createTrayIcon(): Electron.NativeImage {
@@ -37,7 +38,10 @@ function createTrayIcon(): Electron.NativeImage {
   })
 }
 
-export function createApplicationTray(windowManager: WindowManager): Tray {
+export function createApplicationTray(
+  windowManager: WindowManager,
+  onScreenshot: () => void
+): Tray {
   const tray = new Tray(createTrayIcon())
   tray.setToolTip('LeE · 英语生词桌宠')
   tray.setContextMenu(
@@ -60,6 +64,11 @@ export function createApplicationTray(windowManager: WindowManager): Tray {
         click: () => {
           void windowManager.openImport()
         }
+      },
+      {
+        label: '截图并导入',
+        accelerator: SCREENSHOT_SHORTCUT,
+        click: () => onScreenshot()
       },
       { type: 'separator' },
       {

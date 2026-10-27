@@ -31,6 +31,8 @@ const api: LeEApi = {
     ipcRenderer.invoke(IPC_CHANNELS.importChooseImage),
   readClipboardImage: () =>
     ipcRenderer.invoke(IPC_CHANNELS.importClipboardImage),
+  takePendingImportImage: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.importImageTake),
   discardImportImage: (imageId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.importDiscardImage, imageId),
   runImport: (request: ImportRequest) =>
@@ -41,6 +43,11 @@ const api: LeEApi = {
     }
     ipcRenderer.on(IPC_CHANNELS.statsChanged, handler)
     return () => ipcRenderer.removeListener(IPC_CHANNELS.statsChanged, handler)
+  },
+  onImportImagePending: (listener: () => void) => {
+    const handler = (): void => listener()
+    ipcRenderer.on(IPC_CHANNELS.importImagePending, handler)
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.importImagePending, handler)
   }
 }
 

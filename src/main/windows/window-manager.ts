@@ -1,6 +1,11 @@
 import { app, BrowserWindow, screen, type WebContents } from 'electron'
 import { join } from 'node:path'
-import type { AppStats, AppView, WindowTarget } from '../../shared/contracts'
+import type {
+  AppStats,
+  AppView,
+  ImportImageAttachment,
+  WindowTarget
+} from '../../shared/contracts'
 import { IPC_CHANNELS } from '../../shared/contracts'
 
 const PET_WIDTH = 200
@@ -17,6 +22,7 @@ export class WindowManager {
   private reviewWindow: BrowserWindow | null = null
   private editorWindow: BrowserWindow | null = null
   private importWindow: BrowserWindow | null = null
+  private pendingImportImage: ImportImageAttachment | null = null
 
   createPetWindow(): void {
     if (this.petWindow && !this.petWindow.isDestroyed()) {
@@ -68,6 +74,23 @@ export class WindowManager {
     window.focus()
   }
 
+  async openImportWithImage(image: ImportImageAttachment): Promise<void> {
+    this.pendingImportImage = image
+    const window = this.ensureWindow('import')
+    this.positionNearPet(window, IMPORT_WIDTH, IMPORT_HEIGHT)
+
+    if (window.webContents.isLoadingMainFrame()) {
+      window.webContents.once('did-finish-load', () => {
+        this.notifyPendingImportImage(window)
+      })
+    } else {
+      this.notifyPendingImportImage(window)
+    }
+
+    window.show()
+    window.focus()
+  }
+
   showPet(): void {
     if (!this.petWindow || this.petWindow.isDestroyed()) {
       this.createPetWindow()
@@ -85,6 +108,17 @@ export class WindowManager {
     }
 
     window.close()
+  }
+
+  takePendingImportImage(sender: WebContents): ImportImageAttachment | null {
+    const window = BrowserWindow.fromWebContents(sender)
+    if (!window || window !== this.importWindow) {
+      return null
+    }
+
+    const image = this.pendingImportImage
+    this.pendingImportImage = null
+    return image
   }
 
   broadcastStats(stats: AppStats): void {
@@ -161,6 +195,7 @@ export class WindowManager {
       })
       this.importWindow.on('closed', () => {
         this.importWindow = null
+        this.pendingImportImage = null
       })
     }
 
@@ -244,6 +279,14 @@ export class WindowManager {
     }
 
     return window
+  }
+
+  private notifyPendingImportImage(window: BrowserWindow): void {
+    if (!this.pendingImportImage || window.isDestroyed()) {
+      return
+    }
+
+    window.webContents.send(IPC_CHANNELS.importImagePending)
   }
 
   private positionNearPet(

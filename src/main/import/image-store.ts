@@ -62,23 +62,7 @@ export class ImportImageStore implements ImportImageProvider {
   }
 
   async readClipboard(): Promise<ImportImageAttachment | null> {
-    const items = await clipboard.read()
-    let image = nativeImage.createEmpty()
-
-    for (const item of items) {
-      const imageType = item.types.find((type) => type.startsWith('image/'))
-      if (!imageType) {
-        continue
-      }
-      const blob = await item.getType(imageType)
-      if (blob instanceof Blob) {
-        image = nativeImage.createFromBuffer(
-          Buffer.from(await blob.arrayBuffer())
-        )
-        break
-      }
-    }
-
+    const image = await readClipboardNativeImage()
     if (image.isEmpty()) {
       throw new Error('剪贴板里没有图片。请先使用系统截图工具复制截图。')
     }
@@ -117,6 +101,24 @@ export class ImportImageStore implements ImportImageProvider {
       previewDataUrl: `data:image/jpeg;base64,${previewBuffer.toString('base64')}`
     }
   }
+}
+
+export async function readClipboardNativeImage(): Promise<NativeImage> {
+  const items = await clipboard.read()
+
+  for (const item of items) {
+    const imageType = item.types.find((type) => type.startsWith('image/'))
+    if (!imageType) {
+      continue
+    }
+
+    const blob = await item.getType(imageType)
+    if (blob instanceof Blob) {
+      return nativeImage.createFromBuffer(Buffer.from(await blob.arrayBuffer()))
+    }
+  }
+
+  return nativeImage.createEmpty()
 }
 
 function resizeIfNeeded(image: NativeImage): NativeImage {

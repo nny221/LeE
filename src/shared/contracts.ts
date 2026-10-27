@@ -106,9 +106,11 @@ export interface LeEApi {
   saveModelConfig: (input: ModelConfigInput) => Promise<ModelConfigView>
   chooseImportImage: () => Promise<ImportImageAttachment | null>
   readClipboardImage: () => Promise<ImportImageAttachment | null>
+  takePendingImportImage: () => Promise<ImportImageAttachment | null>
   discardImportImage: (imageId: string) => Promise<void>
   runImport: (request: ImportRequest) => Promise<ImportResult>
   onStatsChanged: (listener: (stats: AppStats) => void) => () => void
+  onImportImagePending: (listener: () => void) => () => void
 }
 
 export const IPC_CHANNELS = {
@@ -125,6 +127,8 @@ export const IPC_CHANNELS = {
   modelConfigSave: 'model:config:save',
   importChooseImage: 'import:image:choose',
   importClipboardImage: 'import:image:clipboard',
+  importImageTake: 'import:image:take',
+  importImagePending: 'import:image:pending',
   importDiscardImage: 'import:image:discard',
   importRun: 'import:run'
 } as const

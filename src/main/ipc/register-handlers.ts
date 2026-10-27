@@ -76,6 +76,10 @@ export function registerIpcHandlers({
     imageStore.readClipboard()
   )
 
+  ipcMain.handle(IPC_CHANNELS.importImageTake, (event) =>
+    windowManager.takePendingImportImage(event.sender)
+  )
+
   ipcMain.handle(
     IPC_CHANNELS.importDiscardImage,
     (_event, imageId: string) => {

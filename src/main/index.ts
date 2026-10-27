@@ -7,6 +7,10 @@ import { ImportImageStore } from './import/image-store'
 import { ModelClient } from './import/model-client'
 import { ModelSettingsStore } from './import/model-settings'
 import { registerIpcHandlers } from './ipc/register-handlers'
+import {
+  createScreenshotHandler,
+  SCREENSHOT_SHORTCUT
+} from './screenshot'
 import { ImportService } from './services/import-service'
 import { ReviewService } from './services/review-service'
 import { WordService } from './services/word-service'
@@ -54,11 +58,19 @@ if (!hasSingleInstanceLock) {
       windowManager
     })
     windowManager.createPetWindow()
-    tray = createApplicationTray(windowManager)
+    const screenshotHandler = createScreenshotHandler(imageStore, windowManager)
+    tray = createApplicationTray(windowManager, screenshotHandler)
 
     globalShortcut.register('CommandOrControl+Shift+E', () => {
       void windowManager?.openReview()
     })
+    const screenshotShortcutRegistered = globalShortcut.register(
+      SCREENSHOT_SHORTCUT,
+      screenshotHandler
+    )
+    if (!screenshotShortcutRegistered) {
+      console.warn(`截图快捷键 ${SCREENSHOT_SHORTCUT} 注册失败，可能已被占用。`)
+    }
 
     app.on('activate', () => {
       windowManager?.showPet()
